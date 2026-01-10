@@ -65,12 +65,19 @@ export class GameState {
 
     // Worker
     private worker: Worker | null = null;
+    private channel: BroadcastChannel | null = null;
     
     // Meta
     messages = $state<{id: number, text: string, type: 'info'|'error'|'success'}[]>([]);
     
     constructor() {
         if (browser) {
+            this.channel = new BroadcastChannel('browser_tab_tycoon');
+            this.channel.onmessage = (e) => {
+                if (e.data?.type === 'SYNC') {
+                    this.restoreState(e.data.payload);
+                }
+            };
             this.load();
             this.initWorker();
         }
@@ -174,6 +181,7 @@ export class GameState {
     openTab() {
         this.tabs++;
         this.syncWorkerState();
+        this.save();
         
         const jokes = [
             "Opening StackOverflow...",
@@ -189,6 +197,7 @@ export class GameState {
         if (this.tabs > 1) {
             this.tabs--;
             this.syncWorkerState();
+            this.save();
         }
     }
 
@@ -201,6 +210,7 @@ export class GameState {
             this.upgrades[id].level++;
              // Force reactivity update if needed (deep reactivity handled by proxies usually, but map assignment is safe)
             this.syncWorkerState();
+            this.save();
             this.addMessage(`Upgraded ${upgrade.name}!`, 'success');
         } else {
             this.addMessage("Not enough funds! Freelance harder!", 'error');
@@ -213,7 +223,7 @@ export class GameState {
     }
     
     // Persistence
-    save() {
+    save(broadcast = true) {
         if (!browser) return;
         const data = {
             money: this.money,
@@ -226,6 +236,9 @@ export class GameState {
             }
         };
         localStorage.setItem('browserTabTycoonSave', JSON.stringify(data));
+        if (broadcast) {
+            this.channel?.postMessage({ type: 'SYNC', payload: data });
+        }
     }
 
     load() {
@@ -234,18 +247,23 @@ export class GameState {
         if (saved) {
             try {
                 const data = JSON.parse(saved);
-                this.money = data.money || 0;
-                this.tabs = data.tabs || 1;
-                if (data.upgrades) {
-                    this.upgrades.ram.level = data.upgrades.ram || 1;
-                    this.upgrades.cpu.level = data.upgrades.cpu || 1;
-                    this.upgrades.adblock.level = data.upgrades.adblock || 1;
-                    this.upgrades.darkmode.level = data.upgrades.darkmode || 1;
-                }
+                this.restoreState(data);
             } catch (e) {
                 console.error("Failed to load save", e);
             }
         }
+    }
+
+    restoreState(data: any) {
+        this.money = data.money !== undefined ? data.money : 0;
+        this.tabs = data.tabs || 1;
+        if (data.upgrades) {
+            this.upgrades.ram.level = data.upgrades.ram || 1;
+            this.upgrades.cpu.level = data.upgrades.cpu || 1;
+            this.upgrades.adblock.level = data.upgrades.adblock || 1;
+            this.upgrades.darkmode.level = data.upgrades.darkmode || 1;
+        }
+        this.syncWorkerState();
     }
     
     reset() {
