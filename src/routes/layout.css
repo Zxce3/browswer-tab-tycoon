@@ -1,3 +1,37 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
+
+@theme {
+  --color-brand: #3b82f6;
+  --color-brand-hover: #2563eb;
+  --font-display: "Space Grotesk", sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-slate-900 text-slate-100 antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Prevent text selection for better clicker game UX */
+  button, a, .clickable {
+    user-select: none;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all active:scale-95 shadow-lg shadow-blue-500/20;
+  }
+  
+  .card {
+    @apply bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-xl;
+  }
+}
